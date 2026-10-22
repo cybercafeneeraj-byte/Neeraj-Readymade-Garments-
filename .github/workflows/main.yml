@@ -1,0 +1,58 @@
+name: Build Neeraj Garments APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'main.yml'
+      - '.github/workflows/**'
+      - 'NeerajGarmentsAndroidProject.zip'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download project files
+        uses: actions/checkout@v4
+
+      - name: Find Android project
+        run: |
+          mkdir -p work
+          unzip -q NeerajGarmentsAndroidProject.zip -d work
+          find work -name settings.gradle -o -name settings.gradle.kts
+          echo "Project files extracted"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Check project
+        run: |
+          find work -name settings.gradle -o -name settings.gradle.kts
+          find work -name gradlew
+
+      - name: Build APK
+        run: |
+          cd "$(dirname "$(find work -name gradlew -type f | head -n 1)")"
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NeerajGarments-debug-apk
+          path: work/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
